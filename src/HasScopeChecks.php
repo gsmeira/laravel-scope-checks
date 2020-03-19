@@ -31,10 +31,6 @@ trait HasScopeChecks
 
                 $builder = call_user_func_array([$builder, $originalScopeMethodName], $parameters);
 
-                if ($this->isCheckScopeNegationMethod($method)) {
-                    return ! $builder->exists();
-                }
-
                 return $this->isCheckScopeNegationMethod($method) ?
                     ! $builder->exists() :
                     $builder->exists();
