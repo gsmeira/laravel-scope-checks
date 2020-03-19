@@ -35,7 +35,9 @@ trait HasScopeChecks
                     return ! $builder->exists();
                 }
 
-                return $builder->exists();
+                return $this->isCheckScopeNegationMethod($method) ?
+                    ! $builder->exists() :
+                    $builder->exists();
             }
         }
 
