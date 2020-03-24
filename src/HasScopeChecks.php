@@ -21,8 +21,8 @@ trait HasScopeChecks
     {
         $preParsedMethod = ltrim($method, '_');
 
-        if ($this->isCheckScopeMethod($preParsedMethod)) {
-            $originalScopeMethod = $this->getOriginalCheckScopeMethod($preParsedMethod);
+        if ($this->isScopeCheckMethod($preParsedMethod)) {
+            $originalScopeMethod = $this->getOriginalScopeMethod($preParsedMethod);
 
             if (method_exists($this, "scope{$originalScopeMethod}")) {
                 return $this->handleScopeCheck($method, $originalScopeMethod, $parameters);
@@ -47,18 +47,18 @@ trait HasScopeChecks
             $this->getKey()
         );
 
-        array_push($parameters, ! $this->isInMemoryCheckScope($method));
+        array_push($parameters, ! $this->isInMemoryScopeCheck($method));
 
         $result = call_user_func_array([
             $builder,
             $originalScopeMethod
         ], $parameters);
 
-        if ($this->isInMemoryCheckScope($method)) {
+        if ($this->isInMemoryScopeCheck($method)) {
             return $result;
         }
 
-        if ($this->isCheckScopeNegationMethod($method)) {
+        if ($this->isScopeCheckNegationMethod($method)) {
             return ! $result->exists();
         }
 
@@ -71,7 +71,7 @@ trait HasScopeChecks
      * @param  string  $method
      * @return bool
      */
-    protected function isCheckScopeMethod(string $method): bool
+    protected function isScopeCheckMethod(string $method): bool
     {
         return Str::startsWith($method, 'is') || Str::startsWith($method, 'has');
     }
@@ -82,7 +82,7 @@ trait HasScopeChecks
      * @param  string  $method
      * @return bool
      */
-    protected function isCheckScopeNegationMethod(string $method): bool
+    protected function isScopeCheckNegationMethod(string $method): bool
     {
         return Str::startsWith($method, 'isNot') || Str::startsWith($method, 'hasNo');
     }
@@ -93,7 +93,7 @@ trait HasScopeChecks
      * @param  string  $method
      * @return bool
      */
-    protected function isInMemoryCheckScope(string $method): bool
+    protected function isInMemoryScopeCheck(string $method): bool
     {
         return Str::startsWith($method, '_');
     }
@@ -104,7 +104,7 @@ trait HasScopeChecks
      * @param  string  $method
      * @return string
      */
-    protected function getOriginalCheckScopeMethod(string $method): string
+    protected function getOriginalScopeMethod(string $method): string
     {
         return preg_replace('/^(isNot|hasNo|is|has)(.*)$/m', '$2', $method);
     }
