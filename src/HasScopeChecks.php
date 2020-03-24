@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 trait HasScopeChecks
 {
     /**
-     * Register any other events for your application.
+     * The "booting" method of the model.
      *
      * @return void
      */
