@@ -33,7 +33,7 @@ trait HasScopeChecks
     }
 
     /**
-     * Handle the founded scope checks.
+     * Scope check handler.
      *
      * @param  string  $method
      * @param  string  $originalScopeMethod
