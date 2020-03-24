@@ -2,11 +2,43 @@
 
 namespace BeyondCode\LaravelScopeChecks;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use BadMethodCallException;
+use Illuminate\Support\Facades\Cache;
 
 trait HasScopeChecks
 {
+    /**
+     * Register any other events for your application.
+     *
+     * @return void
+     */
+    protected static function booted()
+    {
+        static::updated(fn (Model $model) => self::cleanScopeChecks($model));
+        static::deleted(fn (Model $model) => self::cleanScopeChecks($model));
+    }
+
+    /**
+     * Clean the cached scope checks.
+     *
+     * @param  Model  $model
+     * @return void
+     */
+    protected static function cleanScopeChecks(Model $model)
+    {
+        foreach (get_class_methods($model) as $method) {
+            if (Str::startsWith($method, 'scope')) {
+                foreach (self::getScopeCheckPrefixes() as $prefix) {
+                    $checkScopeMethod = str_replace('scope', $prefix, $method);
+
+                    Cache::forget(self::getScopeCheckCacheKey($checkScopeMethod, $model));
+                }
+            }
+        }
+    }
+
     /**
      * Forward a method call to the given object.
      *
@@ -19,10 +51,8 @@ trait HasScopeChecks
      */
     protected function forwardCallTo($object, $method, $parameters)
     {
-        $preParsedMethod = ltrim($method, '_');
-
-        if ($this->isScopeCheckMethod($preParsedMethod)) {
-            $originalScopeMethod = $this->getOriginalScopeMethod($preParsedMethod);
+        if ($this->isScopeCheckMethod($method)) {
+            $originalScopeMethod = $this->getOriginalScopeMethod($method);
 
             if (method_exists($this, "scope{$originalScopeMethod}")) {
                 return $this->handleScopeCheck($method, $originalScopeMethod, $parameters);
@@ -42,27 +72,41 @@ trait HasScopeChecks
      */
     protected function handleScopeCheck(string $method, string $originalScopeMethod, array $parameters)
     {
-        $builder = $this->newQuery()->where(
-            $this->getKeyName(),
-            $this->getKey()
-        );
+        $builder = $this->newQuery()
+            ->withTrashed()
+            ->where(
+                $this->getKeyName(),
+                $this->getKey(),
+            );
 
-        array_push($parameters, ! $this->isInMemoryScopeCheck($method));
-
-        $result = call_user_func_array([
+        $builder = call_user_func_array([
             $builder,
             $originalScopeMethod
         ], $parameters);
 
-        if ($this->isInMemoryScopeCheck($method)) {
-            return $result;
-        }
+        return Cache::rememberForever(self::getScopeCheckCacheKey($method, $this), function () use ($builder, $method)
+        {
+            return $this->isScopeCheckNegationMethod($method) ?
+                ! $builder->exists() :
+                $builder->exists();
+        });
+    }
 
-        if ($this->isScopeCheckNegationMethod($method)) {
-            return ! $result->exists();
-        }
-
-        return  $result->exists();
+    /**
+     * Return the scope check cache key.
+     *
+     * @param  string  $method
+     * @param  Model  $model
+     * @return string
+     */
+    protected static function getScopeCheckCacheKey(string $method, Model $model): string
+    {
+        return 'scope-check.'.md5(
+            $method.
+            $model->getTable().
+            $model->getKeyName().
+            $model->getKey()
+        );
     }
 
     /**
@@ -88,17 +132,6 @@ trait HasScopeChecks
     }
 
     /**
-     * Is an "in memory" scope check?
-     *
-     * @param  string  $method
-     * @return bool
-     */
-    protected function isInMemoryScopeCheck(string $method): bool
-    {
-        return Str::startsWith($method, '_');
-    }
-
-    /**
      * Returns the original scope name.
      *
      * @param  string  $method
@@ -107,5 +140,20 @@ trait HasScopeChecks
     protected function getOriginalScopeMethod(string $method): string
     {
         return preg_replace('/^(isNot|hasNo|is|has)(.*)$/m', '$2', $method);
+    }
+
+    /**
+     * Return all scope check prefixes.
+     *
+     * @return array
+     */
+    protected static function getScopeCheckPrefixes(): array
+    {
+        return [
+            'is',
+            'isNot',
+            'has',
+            'hasNo',
+        ];
     }
 }
