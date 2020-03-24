@@ -73,7 +73,6 @@ trait HasScopeChecks
     protected function handleScopeCheck(string $method, string $originalScopeMethod, array $parameters)
     {
         $builder = $this->newQuery()
-            ->withTrashed()
             ->where(
                 $this->getKeyName(),
                 $this->getKey(),
@@ -84,12 +83,15 @@ trait HasScopeChecks
             $originalScopeMethod
         ], $parameters);
 
-        return Cache::rememberForever(self::getScopeCheckCacheKey($method, $this), function () use ($builder, $method)
-        {
-            return $this->isScopeCheckNegationMethod($method) ?
-                ! $builder->exists() :
-                $builder->exists();
-        });
+        return Cache::rememberForever(
+            self::getScopeCheckCacheKey($method, $this),
+            function () use ($builder, $method)
+            {
+                return $this->isScopeCheckNegationMethod($method) ?
+                    ! $builder->exists() :
+                    $builder->exists();
+            }
+        );
     }
 
     /**
