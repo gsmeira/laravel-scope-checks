@@ -31,9 +31,9 @@ trait HasScopeChecks
         foreach (get_class_methods($model) as $method) {
             if (Str::startsWith($method, 'scope')) {
                 foreach (self::getScopeCheckPrefixes() as $prefix) {
-                    $checkScopeMethod = str_replace('scope', $prefix, $method);
+                    $scopeCheckMethod = str_replace('scope', $prefix, $method);
 
-                    Cache::forget(self::getScopeCheckCacheKey($checkScopeMethod, $model));
+                    Cache::forget(self::getScopeCheckCacheKey($scopeCheckMethod, $model));
                 }
             }
         }
