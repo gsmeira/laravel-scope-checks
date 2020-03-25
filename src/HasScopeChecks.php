@@ -16,8 +16,11 @@ trait HasScopeChecks
      */
     protected static function booted()
     {
-        static::updated(fn (Model $model) => self::cleanScopeChecks($model));
-        static::deleted(fn (Model $model) => self::cleanScopeChecks($model));
+        if (config('scope-checks.cache')) {
+            static::updated(fn (Model $model) => self::cleanScopeChecks($model));
+            static::deleted(fn (Model $model) => self::cleanScopeChecks($model));
+            static::restored(fn (Model $model) => self::cleanScopeChecks($model));
+        }
     }
 
     /**
@@ -83,15 +86,26 @@ trait HasScopeChecks
             $originalScopeMethod
         ], $parameters);
 
-        return Cache::rememberForever(
-            self::getScopeCheckCacheKey($method, $this),
-            function () use ($builder, $method)
-            {
-                return $this->isScopeCheckNegationMethod($method) ?
-                    ! $builder->exists() :
-                    $builder->exists();
-            }
-        );
+        if (config('scope-checks.cache')) {
+            return Cache::rememberForever(
+                self::getScopeCheckCacheKey($method, $this),
+                fn () => $this->getScopeCheckResult($method, $builder)
+            );
+        }
+
+        return $this->getScopeCheckResult($method, $builder);
+    }
+
+    /**
+     * Returns the scope check result.
+     *
+     * @param  string  $method
+     * @param  Builder  $builder
+     * @return bool
+     */
+    protected function getScopeCheckResult(string $method, Builder $builder)
+    {
+        return $this->isScopeCheckNegationMethod($method) ? ! $builder->exists() : $builder->exists();
     }
 
     /**
