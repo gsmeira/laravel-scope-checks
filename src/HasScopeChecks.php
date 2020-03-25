@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use BadMethodCallException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Builder;
 
 trait HasScopeChecks
 {
@@ -19,7 +20,6 @@ trait HasScopeChecks
         if (config('scope-checks.cache')) {
             static::updated(fn (Model $model) => self::cleanScopeChecks($model));
             static::deleted(fn (Model $model) => self::cleanScopeChecks($model));
-            static::restored(fn (Model $model) => self::cleanScopeChecks($model));
         }
     }
 
@@ -36,7 +36,9 @@ trait HasScopeChecks
                 foreach (self::getScopeCheckPrefixes() as $prefix) {
                     $scopeCheckMethod = str_replace('scope', $prefix, $method);
 
-                    Cache::forget(self::getScopeCheckCacheKey($scopeCheckMethod, $model));
+                    Cache::forget(
+                        self::getScopeCheckCacheKey($scopeCheckMethod, $model)
+                    );
                 }
             }
         }
