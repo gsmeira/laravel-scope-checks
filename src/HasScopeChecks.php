@@ -91,7 +91,7 @@ trait HasScopeChecks
         if (config('scope-checks.cache')) {
             return Cache::rememberForever(
                 self::getScopeCheckCacheKey($method, $this),
-                fn () => $this->getScopeCheckResult($method, $builder)
+                fn () => $this->getScopeCheckResult($method, $builder),
             );
         }
 
